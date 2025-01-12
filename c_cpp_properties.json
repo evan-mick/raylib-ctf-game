@@ -1,0 +1,27 @@
+{
+    "configurations": [
+        {
+            "name": "macOS",
+            "includePath": [
+                "./include"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/g++",
+            "cStandard": "c11",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "g++-x64"
+        },
+        {
+            "name": "Linux",
+            "includePath": [
+                "./include"
+            ],
+            "defines": [],
+            "compilerPath": "/run/current-system/sw/bin/gcc",
+            "cStandard": "c11",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "gcc-x64"
+        }
+    ],
+    "version": 4
+}
