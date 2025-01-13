@@ -3,7 +3,7 @@ CXXFLAGS = -Wall -std=c11 -Iinclude
 CXXFRAMEWORK = -framework CoreVideo -framework IOKit -framework Cocoa -framework GLUT -framework OpenGL  
 
 LIB = -L./lib/ -lraylib
-SRCS = $(wildcard src/*.c) main.c
+SRCS = $(wildcard src/*.c) 
 OBJS = $(SRCS:.c=.o)
 
 TARGET = game 
@@ -15,7 +15,7 @@ $(TARGET): $(OBJS)
 
 # compile source files into object files
 %.o: %.c
-	$(CXX) $(CXXFRAMEWORK) $(CXXFLAGS)  -I ./include/ -c $< -o $@
+	$(CXX) $(CXXFRAMEWORK) $(CXXFLAGS)  -I./include -c $< -o $@
 
 clean:
 	rm -f $(OBJS) $(TARGET)

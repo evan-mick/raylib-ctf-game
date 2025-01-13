@@ -1,0 +1,28 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-framework",
+      "CoreVideo",
+      "-framework",
+      "IOKit",
+      "-framework",
+      "Cocoa",
+      "-framework",
+      "GLUT",
+      "-framework",
+      "OpenGL",
+      "-Wall",
+      "-std=c11",
+      "-Iinclude",
+      "-I./include",
+      "-c",
+      "-o",
+      "src/game.o",
+      "src/game.c"
+    ],
+    "directory": "/Users/evanmickelson/Documents/Coding/raylib-game",
+    "file": "/Users/evanmickelson/Documents/Coding/raylib-game/src/game.c",
+    "output": "/Users/evanmickelson/Documents/Coding/raylib-game/src/game.o"
+  }
+]
