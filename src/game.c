@@ -194,6 +194,16 @@ void DestroyEntity(GameData* dat, EntityID ent) {
    //dat->next_entity_index
 }
 
+void DamagePlayer(Player *player, int amt) {
+   player->hp -= amt;
+
+   // Death
+   if (player->hp <= 0) {
+
+   }
+}
+
+
 void DrawPlayer(Player *player) {
    if (player == 0)
       return;

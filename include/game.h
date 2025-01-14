@@ -187,6 +187,11 @@ typedef struct GameData {
 } GameData;
 
 
+typedef struct TimerManager {
+
+} TimerManager;
+
+
 // Game Management Functions
 GameData CreateGameData();
 void UpdateEntity(Entity* ent);
@@ -203,6 +208,7 @@ void ProcessEntities(GameData* data);
 // Player functions
 void DrawPlayer(Player* player);
 
+void DamagePlayer(Player* player, int amt);
 int8_t GetMaxHP(Player* player);
 uint8_t GetMaxDashes(Player* player);
 
