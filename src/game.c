@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+PlayerController controllers[MAX_PLAYER_NUM];
 
 void* GetEntityData(GameData *dat, EntityID ent) {
 
@@ -34,13 +35,15 @@ void ProcessInputs(GameData* data) {
    //printf("PROCESSING INPUTS");
    for (int i = 0; i < MAX_PLAYER_NUM; i++) {
 
+      printf("CONTR %d\n", controllers[i].type);
       if (controllers[i].type == CT_NULL_CONTROLLER) 
          continue;
 
       EntityID playerID = controllers[i].local_player;
+
       Player* player = (Player*)GetEntityData(data, playerID);
       if (player == NULL) {
-         printf("PLAYER NULL");
+         printf("PLAYER NULL\n");
          continue;
       }
       // TODO, get input from controllers
@@ -48,11 +51,19 @@ void ProcessInputs(GameData* data) {
 
 
       player->input = 
-         (1 << (IsMouseButtonPressed(0) * 4)) |
-         (1 << (IsKeyDown(KEY_D) * 3)) |
-         (1 << (IsKeyDown(KEY_A) * 2)) |
-         (1 << (IsKeyDown(KEY_S) * 1)) |
-         IsKeyDown(KEY_W);
+         ((IsKeyDown(KEY_LEFT_SHIFT) << 5) |
+         (IsMouseButtonPressed(0) << 4) |
+         (IsKeyDown(KEY_D) << 3) |
+         (IsKeyDown(KEY_A) << 2) |
+         (IsKeyDown(KEY_S) << 1) |
+         (IsKeyDown(KEY_W)));
+
+      bool up = ((player->input & UP) != 0);
+      bool down = ((player->input & DOWN) != 0);
+      bool left = ((player->input & LEFT) != 0);
+      bool right = ((player->input & RIGHT) != 0);
+      player->x_dir = right - left; 
+      player->y_dir = down - up; 
 
       printf("Input %d\n", player->input);
    }
@@ -153,12 +164,10 @@ void ProcessEntity(Entity* ent) {
    case PLAYER:
 
       player = (Player*)(ent->data);
-      bool up = ((player->input | UP) != 0);
-      bool down = ((player->input | DOWN) != 0);
-      bool left = ((player->input | LEFT) != 0);
-      bool right = ((player->input | RIGHT) != 0);
+      
 
-      Vector2 mov = NormalizeVector((Vector2){ right - left, down - up } );
+      Vector2 mov = NormalizeVector((Vector2){ player->x_dir, player->y_dir } );
+      printf("PLAYER PROCESS %d %f %f %lu\n", ent->id, mov.x, mov.y, sizeof(Player));
 
       player->transform.pos = (Vector2){ mov.x + player->transform.pos.x, mov.y + player->transform.pos.y }; 
 

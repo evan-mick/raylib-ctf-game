@@ -6,6 +6,11 @@
 #include "raylib.h"
 #include <stdint.h>
 
+
+// Collisions notes:
+// https://gamedev.stackexchange.com/questions/27596/implementing-separating-axis-theorem-sat-and-minimum-translation-vector-mtv
+// https://www.youtube.com/watch?v=dn0hUgsok9M
+
 // General structure
 //
 // trying out _none ecs_ procedural approach
@@ -109,11 +114,12 @@ typedef enum EPlayerControllerType {
 } EPlayerControllerType;
 
 typedef enum EPlayerInput {
-    UP =    0b00001,
-    DOWN =  0b00010,
-    LEFT =  0b00100,
-    RIGHT = 0b01000,
-    SHOOT = 0b10000,
+    UP =    0b000001,
+    DOWN =  0b000010,
+    LEFT =  0b000100,
+    RIGHT = 0b001000,
+    SHOOT = 0b010000,
+    DASH = 0b100000,
 } EPlayerInput;
 
 
@@ -122,6 +128,8 @@ typedef struct Player {
     EClass player_class;
     ECarrying carrying;
     EPlayerInput input;
+    float x_dir;
+    float y_dir;
     uint8_t dashes;
     int8_t hp;
 } Player;
@@ -134,6 +142,7 @@ typedef struct PlayerController {
     EPlayerInput input;
 } PlayerController;
 
+extern PlayerController controllers[MAX_PLAYER_NUM];
 
 typedef enum EntityType {
     NONE_ENT = 0,
@@ -169,7 +178,6 @@ typedef struct Entity {
 } Entity;
 
 
-static PlayerController controllers[MAX_PLAYER_NUM];
     //EntityID players[MAX_PLAYER_NUM];
     //int player_num;
 typedef struct GameData {
