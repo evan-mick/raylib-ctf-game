@@ -1,3 +1,8 @@
+#ifndef GAME 
+#define GAME
+
+
+
 #include "raylib.h"
 #include <stdint.h>
 
@@ -18,6 +23,12 @@
 //
 //  Give ID + size of struct + data payload
 //  How to sync more complicated data structures? 
+//
+
+
+#define MAX_PLAYER_NUM 4
+#define MAX_TEAM_NUM 2
+#define MAX_ENTITIES 100
 
 typedef struct IVector2 {
     int x;
@@ -28,6 +39,7 @@ typedef struct GameTransform {
     Vector2 pos;
     Vector2 vel;
     Vector2 accel;
+    Vector2 size;
 } GameTransform;
 
 
@@ -87,25 +99,103 @@ typedef enum __attribute__((__packed__)) EClass {
     DEMO = 2,
 } EClass;
 
+typedef int EntityID;
+
+typedef enum EPlayerControllerType {
+    CT_NULL_CONTROLLER = 0,
+    CT_LOCAL = 1,
+    CT_NETWORK = 2,
+    CT_AI = 3,
+} EPlayerControllerType;
+
+typedef enum EPlayerInput {
+    UP =    0b00001,
+    DOWN =  0b00010,
+    LEFT =  0b00100,
+    RIGHT = 0b01000,
+    SHOOT = 0b10000,
+} EPlayerInput;
+
+
 typedef struct Player {
     GameTransform transform;
     EClass player_class;
-    float aim_dir;
+    ECarrying carrying;
+    EPlayerInput input;
     uint8_t dashes;
     int8_t hp;
 } Player;
 
-typedef struct UpgradeBox {
+
+typedef struct PlayerController {
+    EPlayerControllerType type;
+    EntityID local_player;
+    float aim_dir;
+    EPlayerInput input;
+} PlayerController;
+
+
+typedef enum EntityType {
+    NONE_ENT = 0,
+    WALL = 1,
+    UPGRADEBOX = 2,
+    UPGRADEBOX_SPAWNER = 3,
+    HEALTH_SPAWNER = 4,
+    FLAG = 5,
+    PLAYER = 6,
+} EntityType;
+
+
+typedef struct UpgradeBoxSpawner {
     GameTransform transform;
-    ECarrying type;
-} UpgradeBox;
+    EBoxType type;
+    bool available;
+} UpgradeBoxSpawner;
+
+
+typedef struct HealthSpawner {
+    GameTransform transform;
+    bool available;
+} HealthSpawner;
 
 typedef struct Flag {
     GameTransform transform;
-    ECarrying type;
 } Flag;
 
+typedef struct Entity {
+    EntityType type;
+    EntityID id;
+    void* data;
+} Entity;
+
+
+static PlayerController controllers[MAX_PLAYER_NUM];
+    //EntityID players[MAX_PLAYER_NUM];
+    //int player_num;
+typedef struct GameData {
+    Entity entities[MAX_ENTITIES];
+    int entity_num;
+    int next_entity_index;
+} GameData;
+
+
+// Game Management Functions
+GameData CreateGameData();
+void UpdateEntity(Entity* ent);
+EntityID CreateEntity(GameData* dat, EntityType type);
+void ProcessEntity(Entity* ent);
+void* GetEntityData(GameData* dat, EntityID ent);
+void DrawEntity(Entity* ent);
+
+
+void DrawGame(GameData* data);
+void ProcessInputs(GameData* data);
+void ProcessEntities(GameData* data);
+
+// Player functions
 void DrawPlayer(Player* player);
 
 int8_t GetMaxHP(Player* player);
 uint8_t GetMaxDashes(Player* player);
+
+#endif

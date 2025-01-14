@@ -1,5 +1,5 @@
 CXX = gcc 
-CXXFLAGS = -Wall -std=c11 -Iinclude
+CXXFLAGS = -Wall -std=c11 -Iinclude -fsanitize=address
 CXXFRAMEWORK = -framework CoreVideo -framework IOKit -framework Cocoa -framework GLUT -framework OpenGL  
 
 LIB = -L./lib/ -lraylib

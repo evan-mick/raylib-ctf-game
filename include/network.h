@@ -1,6 +1,8 @@
+#ifndef NETWORK
+#define NETWORK
 
+#include "helpers.h"
 #include <arpa/inet.h>
-#include <cstring>
 #include <netdb.h>
 #include <unistd.h>
 
@@ -41,7 +43,7 @@ int SetupUDPConnection(const char* address, const char* port, bool bind_sock, ad
     }
 
     // Create a listening socket for the server on default port
-    for (*outinfo = servinfo; *outinfo != nullptr; *outinfo = (*outinfo)->ai_next) {
+    for (*outinfo = servinfo; *outinfo != NULL; *outinfo = (*outinfo)->ai_next) {
         if ((sock = socket((*outinfo)->ai_family, (*outinfo)->ai_socktype,
                            (*outinfo)->ai_protocol)) < 0) {
             continue;
@@ -54,9 +56,11 @@ int SetupUDPConnection(const char* address, const char* port, bool bind_sock, ad
         break;
     }
 
-    if (*outinfo == nullptr) {
+    if (*outinfo == NULL) {
         return -2;
     }
 
     return sock;
 }
+
+#endif

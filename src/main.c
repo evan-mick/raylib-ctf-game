@@ -1,7 +1,24 @@
 #include "raylib.h"
 #include "helpers.h"
 #include "game.h"
+#include <string.h>
+
+#define DEBUG 1
+#ifdef DEBUG
 #include <stdio.h>
+#define debug_print printf
+#else
+#define debug_print (void)
+#endif
+// Game flow
+// Menu
+// Lobby
+//    Four players, picking teams, picking classes
+// Game
+//    Starting countdown
+//    gameplay loop***
+//    End, to lobby
+
 
 int main() {
 
@@ -15,29 +32,37 @@ int main() {
    SetTargetFPS(60);
 
 
-   Player player = {};
-   player.transform.pos = (Vector2){ width/2.f, height/2.f };
+   //Player player = {};
+   //player.transform.pos = (Vector2){ width/2.f, height/2.f };
+
+   debug_print("start");
+   GameData current_data = (GameData) {
+      .entities = {0},
+      .entity_num = 0,
+      .next_entity_index = 0
+   };
+   EntityID player_test_ent = CreateEntity(&current_data, PLAYER);
+
+   memset(&controllers, 0, sizeof(PlayerController)*MAX_PLAYER_NUM);
+   controllers[0].type = CT_LOCAL;
+   controllers[0].local_player = player_test_ent;
 
    while (!WindowShouldClose()) {
+
+      //debug_print("poll event\n");
+      ProcessInputs(&current_data);
+      Color col = IsKeyDown(KEY_SPACE) ? GREEN : YELLOW;
+      ProcessEntities(&current_data);
+      
       BeginDrawing();
       ClearBackground(RAYWHITE);
-
-      PollInputEvents();
-      Color col = IsKeyDown(KEY_SPACE) ? GREEN : YELLOW;
-
-      Vector2 mov = NormalizeVector((Vector2){ IsKeyDown(KEY_D) - IsKeyDown(KEY_A), IsKeyDown(KEY_S) - IsKeyDown(KEY_W) } );
-
-      player.transform.pos = (Vector2){ mov.x + player.transform.pos.x, mov.y + player.transform.pos.y }; 
-
       for (int x = 0; x < default_map.width; x++) {
          for (int y = 0; y < default_map.height; y++) {
             DrawRectangle(x * TILE_SIZE + BORDER_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE, BLACK);
             DrawRectangleLines(x * TILE_SIZE + BORDER_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE, col);
          }
       }
-      DrawPlayer(&player);
-      
-      //DrawText("Working", 20, 20, 20, BLACK);
+      DrawGame(&current_data);
       EndDrawing();
    }
    CloseWindow();
