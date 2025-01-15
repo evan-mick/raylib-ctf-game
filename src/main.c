@@ -20,6 +20,7 @@
 //    End, to lobby
 
 
+
 int main() {
 
    const int TILE_SIZE = 32;
@@ -36,11 +37,12 @@ int main() {
    //player.transform.pos = (Vector2){ width/2.f, height/2.f };
 
    debug_print("start");
-   GameData current_data = (GameData) {
+   GameData current_data = CreateGameData();
+      /*(GameData) {
       .entities = {0},
       .entity_num = 0,
       .next_entity_index = 0
-   };
+   };*/
    EntityID player_test_ent = CreateEntity(&current_data, PLAYER);
 
    memset(&controllers, 0, sizeof(PlayerController)*MAX_PLAYER_NUM);
@@ -52,6 +54,7 @@ int main() {
       //debug_print("poll event\n");
       ProcessInputs(&current_data);
       Color col = IsKeyDown(KEY_SPACE) ? GREEN : YELLOW;
+      ProcessTimers(&current_data);
       ProcessEntities(&current_data);
       
       BeginDrawing();
@@ -64,6 +67,11 @@ int main() {
       }
       DrawGame(&current_data);
       EndDrawing();
+
+      for (int i = 0; i < current_data.queue_destroy.size; i++) {
+         DestroyEntity(&current_data, ((EntityID*)(current_data.queue_destroy.data))[i]);
+      }
+      ClearDynArray(&(current_data.queue_destroy));
    }
    CloseWindow();
    return 0;

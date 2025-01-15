@@ -4,7 +4,9 @@
 #include "raylib.h"
 #include <math.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define NULL 0
 
@@ -23,27 +25,35 @@ typedef struct LinkedList {
 
 
 
-LLNode _CreateLLNode(void* data, size_t size) {
-    LLNode node;
-    node.data = malloc(size);
+static LLNode* _CreateLLNode(void* data, size_t size) {
+    LLNode* node = malloc(sizeof(LLNode));
+    node->next = NULL;
+    node->prev = NULL;
+    node->data = malloc(size);
+    return node;
 }
 
 
-LLNode _CleanupLLNode(LLNode* node) {
+static void _CleanupLLNode(LLNode* node) {
     free(node->data);
 }
 
-LinkedList CreateLinkedList() {
-
+static LinkedList CreateLinkedList() {
     LinkedList lst;
     //LLNode start = (LLNode) { .data = data, .next = NULL, .prev = NULL };
     lst.start = NULL;
     lst.end = NULL;
-
     return lst;
 }
 
-void CleanupLinkedList(LinkedList* list) {
+static void LinkedListAppend(LinkedList* list, void* data, size_t data_size) {
+    LLNode* old_end = list->end;
+    list->end = _CreateLLNode(data, data_size);
+    list->end->prev = old_end;
+    list->end->next = NULL;
+}
+
+static void CleanupLinkedList(LinkedList* list) {
     if (list == NULL)
         return;
 
@@ -64,7 +74,7 @@ typedef struct DynArray {
 } DynArray;
 
 
-DynArray CreateDynamicArray(size_t capacity, size_t data_size) {
+static DynArray CreateDynamicArray(size_t capacity, size_t data_size) {
     DynArray array;
     array.data = malloc(data_size*capacity);
     array.capacity = capacity;
@@ -73,24 +83,55 @@ DynArray CreateDynamicArray(size_t capacity, size_t data_size) {
     return array;
 }
 
-void CleanupDynamicArray(DynArray array) {
+static void ClearDynArray(DynArray* array) {
+    array->size = 0;
+}
+
+static void AddToDynamicArray(DynArray* array, void* data) {
+
+    // Resize array, copy old data
+    if (array->size >= array->capacity) {
+        size_t old_capacity = array->capacity;
+        array->capacity *= 2;
+        if (array->capacity == 0)
+            array->capacity = 10;
+        
+        void* new_data = malloc(array->capacity * array->data_size);
+        memcpy(new_data, array->data, old_capacity);
+        free(array->data);
+        array->data = new_data;
+        
+    }
+
+    // Copy new data
+    memcpy(((char*)(array->data)) + (array->data_size*array->size), data, array->data_size);
+    array->size++;
+}
+
+static void CleanupDynamicArray(DynArray array) {
     free(array.data);
 }
 
+typedef struct KVPair {
+    void* key; 
+    void* value;
+    struct KVPair* next;
+} KVPair;
 
 // Dictionary
 #define DICTIONARY_CAPACITY 20
 typedef struct Dictionary {
-    LinkedList data[DICTIONARY_CAPACITY];
+    KVPair data[DICTIONARY_CAPACITY];
+    size_t key_size;
+    size_t value_size;
 } Dictionary;
 
 
-Dictionary CreateDictionary(size_t data_size) {
+static Dictionary CreateDictionary(size_t data_size) {
     Dictionary dict;
 
-    for (int i = 0; i < DICTIONARY_CAPACITY; i++) {
-        dict.data[i] = CreateLinkedList();
-    }
+    memset(&dict, 0, sizeof(dict));
+
 
 //CleanupLinkedList(LinkedList* list) {
 

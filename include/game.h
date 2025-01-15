@@ -3,6 +3,7 @@
 
 
 
+#include "helpers.h"
 #include "raylib.h"
 #include <stdint.h>
 
@@ -33,7 +34,8 @@
 
 #define MAX_PLAYER_NUM 4
 #define MAX_TEAM_NUM 2
-#define MAX_ENTITIES 100
+#define MAX_ENTITIES 20 // actually max entities + 1, for some reason...
+#define TIMERS_PER_ENTITY 4
 
 typedef struct IVector2 {
     int x;
@@ -99,10 +101,17 @@ typedef enum __attribute__((__packed__)) ECarrying {
 } ECarrying;
 
 typedef enum __attribute__((__packed__)) EClass {
-    SCOUT = 0,
-    HEAVY = 1,
-    DEMO = 2,
+    CLASS_NONE = 0,
+    SCOUT = 1,
+    HEAVY = 2,
+    DEMO = 3,
 } EClass;
+
+typedef enum __attribute__((__packed__)) ETeam {
+    T_NONE = 0,
+    T_RED = 1,
+    T_BLUE = 2,
+} ETeam;
 
 typedef int EntityID;
 
@@ -130,15 +139,20 @@ typedef struct Player {
     EPlayerInput input;
     float x_dir;
     float y_dir;
+    float aim_dir;
+    ETeam team;
     uint8_t dashes;
     int8_t hp;
 } Player;
 
+typedef struct Bullet {
+    GameTransform transform;
+    EntityID owner;
+} Bullet;
 
 typedef struct PlayerController {
     EPlayerControllerType type;
     EntityID local_player;
-    float aim_dir;
     EPlayerInput input;
 } PlayerController;
 
@@ -152,6 +166,7 @@ typedef enum EntityType {
     HEALTH_SPAWNER = 4,
     FLAG = 5,
     PLAYER = 6,
+    E_BULLET = 7,
 } EntityType;
 
 
@@ -178,27 +193,59 @@ typedef struct Entity {
 } Entity;
 
 
-    //EntityID players[MAX_PLAYER_NUM];
-    //int player_num;
+// Time manager interface
+// Add timer, entity id, timer index
+// Get timer, entity id, timer index, return float of time left
+//
+// Ways of doing it
+//  Dictionary, make key out of id and index
+//  List of vectors
+
+typedef struct Timer {
+    float time_left;
+} Timer;
+typedef struct TimerManager {
+    // map entity id to LL of timers
+    // Array of fixed
+    // Kind of space inefficient, too bad!
+    Timer timers[MAX_ENTITIES * TIMERS_PER_ENTITY];
+} TimerManager;
+
+
+
+//EntityID players[MAX_PLAYER_NUM];
+//int player_num;
 typedef struct GameData {
     Entity entities[MAX_ENTITIES];
+    TimerManager timer_manager;
     int entity_num;
     int next_entity_index;
+    // Is this the right spot for this?
+    DynArray queue_destroy;
 } GameData;
 
 
-typedef struct TimerManager {
 
-} TimerManager;
 
 
 // Game Management Functions
 GameData CreateGameData();
 void UpdateEntity(Entity* ent);
 EntityID CreateEntity(GameData* dat, EntityType type);
-void ProcessEntity(Entity* ent);
+void ProcessEntity(GameData* data, Entity* ent);
 void* GetEntityData(GameData* dat, EntityID ent);
 void DrawEntity(Entity* ent);
+
+void QueueDestroyEntity(GameData* dat, EntityID ent);
+void DestroyEntity(GameData* dat, EntityID ent);
+
+// Timer Manager
+void SetTimer(TimerManager* man, EntityID id, int timer_id, float time);
+float GetTimerVal(TimerManager* man, EntityID id, int timer_id);
+void ProcessTimers(GameData* man);
+
+
+void ProcessGameTransform(GameTransform* transform);
 
 
 void DrawGame(GameData* data);
