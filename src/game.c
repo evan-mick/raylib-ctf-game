@@ -128,6 +128,7 @@ EntityID CreateEntity(GameData* data, EntityType type) {
          memset(data_ptr, 0, sizeof(Player));
          player = data_ptr;
          player->transform.pos = (Vector2) { 80.f, 80.f };
+         player->transform.size = GetPlayerSize(CLASS_NONE);
          entity.data = player;
       break;
    case E_BULLET:
@@ -208,7 +209,6 @@ void ProcessEntity(GameData* data, Entity* ent) {
 
       Vector2 mov = NormalizeVector((Vector2){ player->x_dir, player->y_dir } );
       //printf("PLAYER PROCESS %d %f %f %lu\n", ent->id, mov.x, mov.y, sizeof(Player));
-
       
 
       player->transform.pos = (Vector2){ 100.f*mov.x*GetFrameTime() + player->transform.pos.x, 100.f*GetFrameTime()*mov.y + player->transform.pos.y }; 
@@ -227,7 +227,7 @@ void ProcessEntity(GameData* data, Entity* ent) {
 
                bull->transform.size = (Vector2) { 1.f, 1.f };
                bull->transform.pos = player->transform.pos;
-               bull->transform.vel = (Vector2) { 40.0f * cos(player->aim_dir), 40.0f * sin(player->aim_dir) };
+               bull->transform.vel = (Vector2) { 80.0f * cos(player->aim_dir), 80.0f * sin(player->aim_dir) };
 
                //printf(" bullet pos %f %f\n", bull->transform.pos.x, bull->transform.pos.y);
             }

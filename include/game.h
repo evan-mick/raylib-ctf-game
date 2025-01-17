@@ -254,9 +254,14 @@ void ProcessEntities(GameData* data);
 
 // Player functions
 void DrawPlayer(Player* player);
+Vector2 GetPlayerSize(EClass class);
 
 void DamagePlayer(Player* player, int amt);
 int8_t GetMaxHP(Player* player);
 uint8_t GetMaxDashes(Player* player);
+
+
+bool TestCollision(Rectangle first, Rectangle second);
+Vector2 MDTCollision(Rectangle first, Rectangle second);
 
 #endif
