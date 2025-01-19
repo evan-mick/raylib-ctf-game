@@ -98,11 +98,11 @@ typedef enum __attribute__((__packed__)) EBoxType {
     HP = 1,
 } EBoxType;
 
-typedef enum __attribute__((__packed__)) ECarrying {
+/*typedef enum __attribute__((__packed__)) ECarrying {
     NONE_C = 0,
     FLAG_C = 1,
     BOX_C = 2,
-} ECarrying;
+} ECarrying;*/
 
 typedef enum __attribute__((__packed__)) EClass {
     CLASS_NONE = 0,
@@ -116,6 +116,19 @@ typedef enum __attribute__((__packed__)) ETeam {
     T_RED = 1,
     T_BLUE = 2,
 } ETeam;
+
+typedef enum EntityType {
+    NONE_ENT = 0,
+    WALL = 1,
+    UPGRADEBOX = 2,
+    UPGRADEBOX_SPAWNER = 3,
+    HEALTH_SPAWNER = 4,
+    FLAG = 5,
+    PLAYER = 6,
+    E_BULLET = 7,
+    FLAG_SPAWN = 8,
+} EntityType;
+
 
 
 typedef enum EPlayerControllerType {
@@ -137,7 +150,7 @@ typedef enum EPlayerInput {
 
 typedef struct Player {
     EClass player_class;
-    ECarrying carrying;
+    EntityType carrying;
     EPlayerInput input;
     float x_dir;
     float y_dir;
@@ -158,18 +171,6 @@ typedef struct PlayerController {
 } PlayerController;
 
 extern PlayerController controllers[MAX_PLAYER_NUM];
-
-typedef enum EntityType {
-    NONE_ENT = 0,
-    WALL = 1,
-    UPGRADEBOX = 2,
-    UPGRADEBOX_SPAWNER = 3,
-    HEALTH_SPAWNER = 4,
-    FLAG = 5,
-    PLAYER = 6,
-    E_BULLET = 7,
-} EntityType;
-
 
 typedef struct UpgradeBoxSpawner {
     EBoxType type;
@@ -269,20 +270,26 @@ void ProcessEntities(GameData* data);
 void DrawPlayer(Entity* player);
 Vector2 GetPlayerSize(EClass class);
 
-void DamagePlayer(Player* player, int amt);
+
+void DamagePlayer(GameData* data, EntityID ent, int amt);
 int8_t GetMaxHP(Player* player);
 uint8_t GetMaxDashes(Player* player);
+void PlayerTriggerCheck(GameData* data, Entity* player);
+void PlayerDropCarrying(GameData* data, Entity* player);
 
 
 bool TestCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2);
 bool TestCollisionRect(Rectangle first, Rectangle second);
-Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2);
-Vector2 MDTCollisionRect(Rectangle first, Rectangle second);
+Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2, bool is_x);
+Vector2 MDTCollisionRect(Rectangle first, Rectangle second, bool is_x);
 
-Vector2 CheckCollisionsPhysical(GameData* data, EntityID checking, CollisionMask mask);
+Vector2 CheckCollisionsPhysical(GameData* data, EntityID checking, CollisionMask mask, bool x_mov);
 void CheckCollisionsTrigger(float x1, float y1, float width, float height, EntityID checking, CollisionMask mask);
 
 void SpawnEntitiesFromMapData(GameData* data, Map* map, float tile_size);
+
+
+Vector2 GetEntityTypeSize(EntityType type);
 
 #endif
 

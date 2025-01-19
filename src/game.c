@@ -215,8 +215,19 @@ void ProcessEntity(GameData* data, Entity* ent) {
      break;
    case PLAYER:
 
+
       player = (Player*)(ent->data);
       
+      if (GetTimerVal(&(data->timer_manager), ent->id, 0) > 0.f) 
+            return;
+
+      // Timer done, and we were dead, so respawn
+      if (player->hp <= 0) {
+         // TODO: make dynamic
+         player->hp = 3;
+            
+         ent->transform.pos =  (Vector2) { 80.f, 80.f };
+      }
       //ProcessGameTransform(&(player->transform));
 
       Vector2 mov = NormalizeVector((Vector2){ player->x_dir, player->y_dir } );
@@ -225,16 +236,18 @@ void ProcessEntity(GameData* data, Entity* ent) {
 
       ent->transform.pos = (Vector2){ 100.f*mov.x*GetFrameTime() + ent->transform.pos.x, 100.f*GetFrameTime()*mov.y + ent->transform.pos.y }; 
 
-      Vector2 offset = CheckCollisionsPhysical(data, ent->id, CL_WALL);
+      //Vector2 offset = CheckCollisionsPhysical(data, ent->id, CL_WALL, (mov.x > mov.y));
 
-      if (offset.x > 0.f || offset.y > 0.f)
-         printf("OFFSET %f %f \n", offset.x, offset.y);
-      ent->transform.pos.x += offset.x;
-      ent->transform.pos.y += offset.y;
+     // if (offset.x > 0.f || offset.y > 0.f)
+     //    printf("OFFSET %f %f \n", offset.x, offset.y);
+     // ent->transform.pos.x += offset.x;
+     // ent->transform.pos.y += offset.y;
+
+      PlayerTriggerCheck(data, ent);
 
       bool shoot = ((player->input & SHOOT) != 0);
 
-      if (shoot) {
+      if (shoot && GetTimerVal(&(data->timer_manager), ent->id, 1) <= 0.f) {
             EntityID bullet_ent = CreateEntity(data, E_BULLET);
             if (bullet_ent == -1)
                break;
@@ -248,10 +261,12 @@ void ProcessEntity(GameData* data, Entity* ent) {
                bull_trans->size = (Vector2) { 1.f, 1.f };
                bull_trans->pos = ent->transform.pos;
                bull_trans->vel = (Vector2) { 80.0f * cos(player->aim_dir), 80.0f * sin(player->aim_dir) };
+               SetTimer(&(data->timer_manager), ent->id, 1, .2f);
 
                //printf(" bullet pos %f %f\n", bull->transform.pos.x, bull->transform.pos.y);
             }
          }
+
 
 
       break;
@@ -266,6 +281,68 @@ void ProcessEntity(GameData* data, Entity* ent) {
    }
 }
 
+
+Vector2 GetEntityTypeSize(EntityType type) {
+   switch (type) {
+      default:
+         return (Vector2) { 20, 20 };
+   }
+}
+
+void PlayerDropCarrying(GameData* data, Entity* player_ent) {
+   GameTransform* player_transform = GetEntityTransform(data, player_ent->id);
+   Player* player = (Player*)GetEntityData(data, player_ent->id);
+   EntityID ent = CreateEntity(data, player->carrying);
+
+   GameTransform* trans = GetEntityTransform(data, ent);
+   *trans = *player_transform;
+   trans->size = GetEntityTypeSize(data->entities[ent].type);
+   player->carrying = NONE_ENT;
+}
+
+void PlayerTriggerCheck(GameData* data, Entity* player_ent) {
+   GameTransform* check_trans = GetEntityTransform(data, player_ent->id);
+   Player* player = (Player*)GetEntityData(data, player_ent->id);
+   int entities_processed = 0;
+   int index = 0;
+
+
+   //printf("draw game %f", GetTime());
+   while (entities_processed < data->entity_num && index < MAX_ENTITIES) {
+      index++;
+      if (data->entities[index].type != FLAG && data->entities[index].type != UPGRADEBOX && data->entities[index].type != E_BULLET)
+         continue;
+      GameTransform* cur_trans = GetEntityTransform(data, index);
+
+      bool coll = TestCollision(check_trans->pos.x, check_trans->pos.y, check_trans->size.x, check_trans->size.y, cur_trans->pos.x, cur_trans->pos.y, cur_trans->size.x, cur_trans->size.y);
+
+      switch (data->entities[index].type) {
+         case FLAG:
+            PlayerDropCarrying(data, player_ent);
+            QueueDestroyEntity(data, index);
+            player->carrying = FLAG; 
+            break;
+         case UPGRADEBOX:
+            if (player->carrying != FLAG) {
+               PlayerDropCarrying(data, player_ent);
+               QueueDestroyEntity(data, index);
+               player->carrying = UPGRADEBOX; 
+            }
+            break;
+         case E_BULLET:
+            if (((Bullet*)GetEntityData(data, index))->owner != player_ent->id) {
+               QueueDestroyEntity(data, index);
+               DamagePlayer(data, player_ent->id, 1);
+            }
+         break;
+         default:
+         
+         break;
+      }
+
+      entities_processed++;
+   }
+}
 
 void SpawnEntitiesFromMapData(GameData* data, Map* map, float tile_size) {
    for (int x = 0; x < map->width; x++) {
@@ -289,7 +366,7 @@ void SpawnEntitiesFromMapData(GameData* data, Map* map, float tile_size) {
 
 // This is inefficient
 // I am understanding more the benefits of ECS!
-Vector2 CheckCollisionsPhysical(GameData* data, EntityID checking, CollisionMask mask) {
+Vector2 CheckCollisionsPhysical(GameData* data, EntityID checking, CollisionMask mask, bool x_mov) {
    GameTransform* check_trans = GetEntityTransform(data, checking);
    int entities_processed = 0;
    int index = 0;
@@ -312,7 +389,7 @@ Vector2 CheckCollisionsPhysical(GameData* data, EntityID checking, CollisionMask
       Vector2 cur_coll = (Vector2) {0.f , 0.f };
 
       if (coll) {
-         cur_coll = MDTCollision(check_trans->pos.x, check_trans->pos.y, check_trans->size.x, check_trans->size.y, cur_trans->pos.x, cur_trans->pos.y, cur_trans->size.x, cur_trans->size.y);
+         cur_coll = MDTCollision(check_trans->pos.x, check_trans->pos.y, check_trans->size.x, check_trans->size.y, cur_trans->pos.x, cur_trans->pos.y, cur_trans->size.x, cur_trans->size.y, x_mov);
 
          printf("coll %d %f %f %f %f %f %f %f %f %f %f\n", coll, cur_coll.x, cur_coll.y, check_trans->pos.x, check_trans->pos.y, check_trans->size.x, check_trans->size.y, cur_trans->pos.x, cur_trans->pos.y, cur_trans->size.x, cur_trans->size.y);
       }
@@ -345,12 +422,15 @@ void DestroyEntity(GameData* dat, EntityID ent) {
    }
 }
 
-void DamagePlayer(Player *player, int amt) {
+void DamagePlayer(GameData* data, EntityID ent, int amt) {
+
+   Player* player = GetEntityData(data, ent);
    player->hp -= amt;
 
    // Death
    if (player->hp <= 0) {
 
+      SetTimer(&(data->timer_manager), ent, 0, 5.0f);
    }
 }
 
@@ -380,6 +460,9 @@ void DrawPlayer(Entity* player) {
 
 
    Player* player_dat = player->data;
+
+   if (player_dat->hp == 0)
+      return;
 
    Color col;
    Vector2 size = GetPlayerSize(player_dat->player_class);
@@ -488,26 +571,64 @@ bool TestCollisionRect(Rectangle first, Rectangle second) {
    return TestCollision(first.x, first.y, first.width, first.height, second.x, second.y, second.width, second.height);
 }
 
-Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2) {
-   float in_x_right = ((x1 + width1) - x2) ;
-   float in_x_left = (x1 - (x2 + width2));
-   float in_y_down = ((y1 + height1) - y2);
-   float in_y_up = (y1 - (y2 + height2));
 
-   Vector2 ret_vec = { 0.f, 0.f};
+float min(float a, float b) {
+   return a > b ? b : a;
+}
+
+float max(float a, float b) {
+   return a < b ? b : a;
+}
+
+Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2, bool is_x) {
+
+   float ent1_minx = x1;
+   float ent1_maxx = x1 + width1;
+   float ent1_miny = y1;
+   float ent1_maxy = y1 + height1;
+ 
+   float ent2_minx = x2;
+   float ent2_maxx = x2 + width2;
+   float ent2_miny = y2;
+   float ent2_maxy = y2 + height2;
+     
+//   float in_x_right = ((x1 + width1) - x2) ;
+//   float in_x_left = (x1 - (x2 + width2));
+//   float in_y_down = ((y1 + height1) - y2);
+//   float in_y_up = (y1 - (y2 + height2));
+   //
+
+   float x_off = 0.f;  
+   float y_off = 0.f;  
+
+   if (ent1_maxx < ent2_maxx) {
+      x_off = -(ent1_maxx - ent2_minx);
+   } else {
+      x_off = ent2_maxx - ent1_minx;
+   }
+
+   if (ent1_maxy < ent2_maxy) {
+      y_off = -(ent1_maxy - ent2_miny);
+   } else {
+      y_off = -(ent2_maxy - ent1_miny);
+   }
+
+   if (is_x) {
+      return (Vector2) { x_off, 0.f  };
+   }
+   return (Vector2) { 0.f, y_off  };
+
+
 
    //printf("coll test %f %f %f %f\n", in_x_right, in_x_left, in_y_up, in_y_down);
 
    //if (((in_x_left < 0 || in_x_right < 0) && (in_y_up < 0 || in_y_down < 0)))
    //   return ret_vec;
 
-   float y = in_y_up > in_y_down ? in_y_down : in_y_up;
-   float x = in_x_right > in_x_left ? in_x_left : in_x_right;
 
-   return x > y ? (Vector2) { 0.f, ret_vec.y } : (Vector2) { ret_vec.x, 0.f };
 }
 
-Vector2 MDTCollisionRect(Rectangle first, Rectangle second) {
-   return MDTCollision(first.x, first.y, first.width, first.height, second.x, second.y, second.width, second.height);
+Vector2 MDTCollisionRect(Rectangle first, Rectangle second, bool is_x) {
+   return MDTCollision(first.x, first.y, first.width, first.height, second.x, second.y, second.width, second.height, is_x);
 }
 
