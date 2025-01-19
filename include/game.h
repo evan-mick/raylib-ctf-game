@@ -34,8 +34,12 @@
 
 #define MAX_PLAYER_NUM 4
 #define MAX_TEAM_NUM 2
-#define MAX_ENTITIES 20 // actually max entities + 1, for some reason...
+#define MAX_ENTITIES 100 // actually max entities + 1, for some reason...
 #define TIMERS_PER_ENTITY 4
+
+typedef int32_t EntityID;
+typedef uint8_t CollisionMask;
+//typedef uint8_t EntityCollisionMask;
 
 typedef struct IVector2 {
     int x;
@@ -113,7 +117,6 @@ typedef enum __attribute__((__packed__)) ETeam {
     T_BLUE = 2,
 } ETeam;
 
-typedef int EntityID;
 
 typedef enum EPlayerControllerType {
     CT_NULL_CONTROLLER = 0,
@@ -133,7 +136,6 @@ typedef enum EPlayerInput {
 
 
 typedef struct Player {
-    GameTransform transform;
     EClass player_class;
     ECarrying carrying;
     EPlayerInput input;
@@ -146,7 +148,6 @@ typedef struct Player {
 } Player;
 
 typedef struct Bullet {
-    GameTransform transform;
     EntityID owner;
 } Bullet;
 
@@ -171,27 +172,35 @@ typedef enum EntityType {
 
 
 typedef struct UpgradeBoxSpawner {
-    GameTransform transform;
     EBoxType type;
     bool available;
 } UpgradeBoxSpawner;
 
+typedef struct Wall {
+} Wall;
 
 typedef struct HealthSpawner {
-    GameTransform transform;
     bool available;
 } HealthSpawner;
 
 typedef struct Flag {
-    GameTransform transform;
 } Flag;
 
 typedef struct Entity {
     EntityType type;
     EntityID id;
+    GameTransform transform;
     void* data;
 } Entity;
 
+
+
+typedef enum CollisionLayer {
+    CL_NONE = 0, 
+    CL_PLAYER = 1,
+    CL_BULLET = 2, 
+    CL_WALL = 4, 
+} CollisionLayer;
 
 // Time manager interface
 // Add timer, entity id, timer index
@@ -217,6 +226,7 @@ typedef struct TimerManager {
 //int player_num;
 typedef struct GameData {
     Entity entities[MAX_ENTITIES];
+    CollisionMask collision_masks[MAX_ENTITIES];
     TimerManager timer_manager;
     int entity_num;
     int next_entity_index;
@@ -225,15 +235,18 @@ typedef struct GameData {
 } GameData;
 
 
+//void(*)(EntityID, EntityID) ptr; 
 
 
 
 // Game Management Functions
 GameData CreateGameData();
+void DestroyGameData(GameData* data);
 void UpdateEntity(Entity* ent);
 EntityID CreateEntity(GameData* dat, EntityType type);
 void ProcessEntity(GameData* data, Entity* ent);
 void* GetEntityData(GameData* dat, EntityID ent);
+GameTransform* GetEntityTransform(GameData* dat, EntityID ent);
 void DrawEntity(Entity* ent);
 
 void QueueDestroyEntity(GameData* dat, EntityID ent);
@@ -253,7 +266,7 @@ void ProcessInputs(GameData* data);
 void ProcessEntities(GameData* data);
 
 // Player functions
-void DrawPlayer(Player* player);
+void DrawPlayer(Entity* player);
 Vector2 GetPlayerSize(EClass class);
 
 void DamagePlayer(Player* player, int amt);
@@ -261,7 +274,15 @@ int8_t GetMaxHP(Player* player);
 uint8_t GetMaxDashes(Player* player);
 
 
-bool TestCollision(Rectangle first, Rectangle second);
-Vector2 MDTCollision(Rectangle first, Rectangle second);
+bool TestCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2);
+bool TestCollisionRect(Rectangle first, Rectangle second);
+Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2);
+Vector2 MDTCollisionRect(Rectangle first, Rectangle second);
+
+Vector2 CheckCollisionsPhysical(GameData* data, EntityID checking, CollisionMask mask);
+void CheckCollisionsTrigger(float x1, float y1, float width, float height, EntityID checking, CollisionMask mask);
+
+void SpawnEntitiesFromMapData(GameData* data, Map* map, float tile_size);
 
 #endif
+

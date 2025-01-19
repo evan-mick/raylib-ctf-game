@@ -8,7 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NULL 0
+#ifndef NULL
+#define NULL (void*)0
+#endif
 
 
 // Linked list
@@ -85,6 +87,10 @@ static DynArray CreateDynamicArray(size_t capacity, size_t data_size) {
 
 static void ClearDynArray(DynArray* array) {
     array->size = 0;
+}
+static void DestroyDynArray(DynArray* array) {
+    free(array->data);
+
 }
 
 static void AddToDynamicArray(DynArray* array, void* data) {

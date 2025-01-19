@@ -18,6 +18,14 @@ void* GetEntityData(GameData *dat, EntityID ent) {
    return dat->entities[ent].data;
 }
 
+
+
+GameTransform* GetEntityTransform(GameData* dat, EntityID ent) {
+   if (dat == NULL || dat->entities[ent].type == NONE_ENT)
+      return NULL;
+   return &(dat->entities[ent].transform);
+}
+
 void DrawGame(GameData* data) {
    int entities_processed = 0;
    int index = 0;
@@ -44,6 +52,7 @@ void ProcessInputs(GameData* data) {
       EntityID playerID = controllers[i].local_player;
 
       Player* player = (Player*)GetEntityData(data, playerID);
+      GameTransform* player_transform = (GameTransform*)&(data->entities[playerID].transform); 
       if (player == NULL) {
          printf("PLAYER NULL\n");
          continue;
@@ -70,7 +79,7 @@ void ProcessInputs(GameData* data) {
 
       float mouse_x = GetMouseX();
       float mouse_y = GetMouseY();
-      player->aim_dir = atan2f(mouse_y - player->transform.pos.y, mouse_x - player->transform.pos.x);
+      player->aim_dir = atan2f(mouse_y - player_transform->pos.y, mouse_x - player_transform->pos.x);
       //printf("aim dir %f", player->aim_dir);
    }
 
@@ -88,6 +97,8 @@ void ProcessEntities(GameData* data) {
       if (ent->type == NONE_ENT) {
          //printf("none ent process");
          continue;
+      } else if (ent->type == WALL) {
+
       }
       //printf("process ind %d\n", index);
 
@@ -127,8 +138,8 @@ EntityID CreateEntity(GameData* data, EntityType type) {
          data_ptr = malloc(sizeof(Player));
          memset(data_ptr, 0, sizeof(Player));
          player = data_ptr;
-         player->transform.pos = (Vector2) { 80.f, 80.f };
-         player->transform.size = GetPlayerSize(CLASS_NONE);
+         entity.transform.pos = (Vector2) { 80.f, 80.f };
+         entity.transform.size = GetPlayerSize(CLASS_NONE);
          entity.data = player;
       break;
    case E_BULLET:
@@ -157,7 +168,7 @@ EntityID CreateEntity(GameData* data, EntityType type) {
 }
 
 void DrawEntity(Entity* ent) {
-   if (ent == NULL || ent->data == NULL) {
+   if (ent == NULL) {
       printf("NULL DRAW");
       return;
    }
@@ -166,6 +177,7 @@ void DrawEntity(Entity* ent) {
    case NONE_ENT:
       break;
    case WALL:
+         DrawRectangleV(ent->transform.pos, ent->transform.size, YELLOW);
       break;
    case UPGRADEBOX:
       break;
@@ -176,16 +188,16 @@ void DrawEntity(Entity* ent) {
    case FLAG:
      break;
    case PLAYER:
-         DrawPlayer((Player*)ent->data);
+         DrawPlayer(ent);
       break;
    case E_BULLET:
-         DrawRectangleV(((Bullet*)(ent->data))->transform.pos, (Vector2){ 20.f, 20.f }, YELLOW);
+         DrawRectangleV(ent->transform.pos, (Vector2){ 20.f, 20.f }, YELLOW);
      break;
    }
 }
 void ProcessEntity(GameData* data, Entity* ent) {
-   if (ent == NULL || ent->data == NULL) {
-      printf("null ent %d\n", ent->id);
+   if (ent == NULL) {
+      //printf("null ent %d\n", ent->id);
       return;
    }
 
@@ -211,8 +223,14 @@ void ProcessEntity(GameData* data, Entity* ent) {
       //printf("PLAYER PROCESS %d %f %f %lu\n", ent->id, mov.x, mov.y, sizeof(Player));
       
 
-      player->transform.pos = (Vector2){ 100.f*mov.x*GetFrameTime() + player->transform.pos.x, 100.f*GetFrameTime()*mov.y + player->transform.pos.y }; 
+      ent->transform.pos = (Vector2){ 100.f*mov.x*GetFrameTime() + ent->transform.pos.x, 100.f*GetFrameTime()*mov.y + ent->transform.pos.y }; 
 
+      Vector2 offset = CheckCollisionsPhysical(data, ent->id, CL_WALL);
+
+      if (offset.x > 0.f || offset.y > 0.f)
+         printf("OFFSET %f %f \n", offset.x, offset.y);
+      ent->transform.pos.x += offset.x;
+      ent->transform.pos.y += offset.y;
 
       bool shoot = ((player->input & SHOOT) != 0);
 
@@ -225,9 +243,11 @@ void ProcessEntity(GameData* data, Entity* ent) {
             if (bull != NULL) {
                bull->owner = ent->id;
 
-               bull->transform.size = (Vector2) { 1.f, 1.f };
-               bull->transform.pos = player->transform.pos;
-               bull->transform.vel = (Vector2) { 80.0f * cos(player->aim_dir), 80.0f * sin(player->aim_dir) };
+               GameTransform* bull_trans = GetEntityTransform(data, bullet_ent);
+
+               bull_trans->size = (Vector2) { 1.f, 1.f };
+               bull_trans->pos = ent->transform.pos;
+               bull_trans->vel = (Vector2) { 80.0f * cos(player->aim_dir), 80.0f * sin(player->aim_dir) };
 
                //printf(" bullet pos %f %f\n", bull->transform.pos.x, bull->transform.pos.y);
             }
@@ -236,7 +256,7 @@ void ProcessEntity(GameData* data, Entity* ent) {
 
       break;
    case E_BULLET:
-         ProcessGameTransform(&(((Bullet*)GetEntityData(data, ent->id))->transform));
+         ProcessGameTransform(GetEntityTransform(data, ent->id));
          float val = GetTimerVal(&(data->timer_manager), ent->id, 0);
          if (val <= 0.f)
             QueueDestroyEntity(data, ent->id);
@@ -244,6 +264,64 @@ void ProcessEntity(GameData* data, Entity* ent) {
    default:
       break;
    }
+}
+
+
+void SpawnEntitiesFromMapData(GameData* data, Map* map, float tile_size) {
+   for (int x = 0; x < map->width; x++) {
+      for (int y = 0; y < map->height; y++) {
+         int ind = y * map->width + x;
+
+         if (map->map_data[ind] == WA) {
+            EntityID wall_id = CreateEntity(data, WALL);
+            GameTransform* trans = GetEntityTransform(data, wall_id);
+            trans->pos.x = x*tile_size;
+            trans->pos.y = y*tile_size;
+            trans->size.x = tile_size;
+            trans->size.y = tile_size;
+         }
+
+      }
+   }
+
+}
+
+
+// This is inefficient
+// I am understanding more the benefits of ECS!
+Vector2 CheckCollisionsPhysical(GameData* data, EntityID checking, CollisionMask mask) {
+   GameTransform* check_trans = GetEntityTransform(data, checking);
+   int entities_processed = 0;
+   int index = 0;
+   Vector2 offset = {};
+
+
+   //printf("draw game %f", GetTime());
+   while (entities_processed < data->entity_num && index < MAX_ENTITIES) {
+      index++;
+      //if ((data->collision_masks[index] & mask) == 0)
+      //   continue;
+      if (data->entities[index].type != WALL)
+         continue;
+      GameTransform* cur_trans = GetEntityTransform(data, index);
+
+      bool coll = TestCollision(check_trans->pos.x, check_trans->pos.y, check_trans->size.x, check_trans->size.y, cur_trans->pos.x, cur_trans->pos.y, cur_trans->size.x, cur_trans->size.y);
+
+      //printf("coll %d %f %f %f %f %f %f %f %f\n", coll, check_trans->pos.x, check_trans->pos.y, check_trans->size.x, check_trans->size.y, cur_trans->pos.x, cur_trans->pos.y, cur_trans->size.x, cur_trans->size.y);
+
+      Vector2 cur_coll = (Vector2) {0.f , 0.f };
+
+      if (coll) {
+         cur_coll = MDTCollision(check_trans->pos.x, check_trans->pos.y, check_trans->size.x, check_trans->size.y, cur_trans->pos.x, cur_trans->pos.y, cur_trans->size.x, cur_trans->size.y);
+
+         printf("coll %d %f %f %f %f %f %f %f %f %f %f\n", coll, cur_coll.x, cur_coll.y, check_trans->pos.x, check_trans->pos.y, check_trans->size.x, check_trans->size.y, cur_trans->pos.x, cur_trans->pos.y, cur_trans->size.x, cur_trans->size.y);
+      }
+
+      offset = (Vector2) { offset.x + cur_coll.x, offset.y + cur_coll.y };
+      entities_processed++;
+   }
+
+   return offset;
 }
 
 void QueueDestroyEntity(GameData* dat, EntityID ent) { 
@@ -296,15 +374,17 @@ Vector2 GetPlayerSize(EClass class) {
    return (Vector2){ size, size };
 }
 
-void DrawPlayer(Player *player) {
-   if (player == 0)
+void DrawPlayer(Entity* player) {
+   if (player == NULL)
       return;
 
 
-   Color col;
-   Vector2 size = GetPlayerSize(player->player_class);
+   Player* player_dat = player->data;
 
-   switch (player->team) {
+   Color col;
+   Vector2 size = GetPlayerSize(player_dat->player_class);
+
+   switch (player_dat->team) {
    case T_RED:
          col = RED;
      break;
@@ -333,13 +413,27 @@ void ProcessGameTransform(GameTransform* transform) {
 GameData CreateGameData() {
    GameData ret = {
       .entities = {0},
-      .timer_manager = {-1.f},
+      .timer_manager = { -1.f },
 
       .entity_num = 0,
       .next_entity_index = 0
    };
    ret.queue_destroy = CreateDynamicArray(0, sizeof(EntityID));
    return ret; 
+}
+
+
+
+void DestroyGameData(GameData* data) {
+   if (data == NULL) 
+      return; 
+
+   for (int i = 0; i < MAX_ENTITIES; i++) {
+      if (data->entities[i].type == NONE_ENT)
+         continue; 
+      free(data->entities[i].data);
+   }
+   DestroyDynArray(&(data->queue_destroy));
 }
 
 void SetTimer(TimerManager* man, EntityID id, int timer_id, float time) {
@@ -382,5 +476,38 @@ void ProcessTimers(GameData* data) {
 }
 
 
+bool TestCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2) {
+   bool in_x = ((x1 + width1) > x2) && (x1 < (x2 + width2));
+   bool in_y = ((y1 + height1) > y2) && (y1 < (y2 + height2));
+   return (in_x && in_y);
+}
 
+bool TestCollisionRect(Rectangle first, Rectangle second) {
+//   bool in_x = (first.x + first.width > second.x) || (first.x < second.x + second.width);
+//   bool in_y = (first.y + first.height > second.y) || (first.y < second.y + second.height);
+   return TestCollision(first.x, first.y, first.width, first.height, second.x, second.y, second.width, second.height);
+}
+
+Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2) {
+   float in_x_right = ((x1 + width1) - x2) ;
+   float in_x_left = (x1 - (x2 + width2));
+   float in_y_down = ((y1 + height1) - y2);
+   float in_y_up = (y1 - (y2 + height2));
+
+   Vector2 ret_vec = { 0.f, 0.f};
+
+   //printf("coll test %f %f %f %f\n", in_x_right, in_x_left, in_y_up, in_y_down);
+
+   //if (((in_x_left < 0 || in_x_right < 0) && (in_y_up < 0 || in_y_down < 0)))
+   //   return ret_vec;
+
+   float y = in_y_up > in_y_down ? in_y_down : in_y_up;
+   float x = in_x_right > in_x_left ? in_x_left : in_x_right;
+
+   return x > y ? (Vector2) { 0.f, ret_vec.y } : (Vector2) { ret_vec.x, 0.f };
+}
+
+Vector2 MDTCollisionRect(Rectangle first, Rectangle second) {
+   return MDTCollision(first.x, first.y, first.width, first.height, second.x, second.y, second.width, second.height);
+}
 

@@ -49,6 +49,8 @@ int main() {
    controllers[0].type = CT_LOCAL;
    controllers[0].local_player = player_test_ent;
 
+   SpawnEntitiesFromMapData(&current_data, &default_map, TILE_SIZE);
+
    while (!WindowShouldClose()) {
 
       //debug_print("poll event\n");
@@ -58,13 +60,13 @@ int main() {
       ProcessEntities(&current_data);
       
       BeginDrawing();
-      ClearBackground(RAYWHITE);
-      for (int x = 0; x < default_map.width; x++) {
+      ClearBackground(BLACK);
+      /*for (int x = 0; x < default_map.width; x++) {
          for (int y = 0; y < default_map.height; y++) {
             DrawRectangle(x * TILE_SIZE + BORDER_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE, BLACK);
             DrawRectangleLines(x * TILE_SIZE + BORDER_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE, col);
          }
-      }
+      }*/
       DrawGame(&current_data);
       EndDrawing();
 
@@ -73,6 +75,7 @@ int main() {
       }
       ClearDynArray(&(current_data.queue_destroy));
    }
+   DestroyGameData(&current_data);
    CloseWindow();
    return 0;
 }
