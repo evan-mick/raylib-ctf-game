@@ -21,7 +21,7 @@ void* GetEntityData(GameData *dat, EntityID ent) {
 
 
 GameTransform* GetEntityTransform(GameData* dat, EntityID ent) {
-   if (dat == NULL || dat->entities[ent].type == NONE_ENT)
+   if (dat->entities[ent].id == -1)
       return NULL;
    return &(dat->entities[ent].transform);
 }
@@ -108,18 +108,45 @@ void ProcessEntities(GameData* data) {
 
 }
 
-EntityID CreateEntity(GameData* data, EntityType type) {
-
+EntityID CreateEmptyEntity(GameData* data) {
    if (data->entity_num >= MAX_ENTITIES || data->next_entity_index >= MAX_ENTITIES)
       return -1;
-
-
+   
    Entity entity = (Entity){};
-   Player* player;
+   entity.id = data->next_entity_index;
+   entity.type = NONE_ENT; 
+
+   bool set = false;
+   for (int i = entity.id; i < MAX_ENTITIES; i++) {
+      if (data->entities[i].id == -1) {
+         data->next_entity_index = i + 1;
+         set = true;
+         break;
+      }
+   }
+   if (!set) {
+      data->next_entity_index = MAX_ENTITIES;
+      printf("type %d ent num %d next ent %d\n", entity.id, data->entity_num, data->next_entity_index);
+      return -1;
+   }
+   printf("type %d ent num %d next ent %d\n", entity.type, data->entity_num, data->next_entity_index);
+
+   data->entity_num++;
+   data->entities[entity.id] = entity;
+   return entity.id;
+}
+
+void SetEntityType(GameData* data, EntityID id, EntityType type) {
+
+   if (id == -1 || data->entities[id].id == -1)
+      return;
 
    void* data_ptr = NULL;
-   entity.id = data->next_entity_index;
-   entity.type = type; 
+   Entity* entity = &(data->entities[id]);
+   Player* player;
+
+   entity->type = type;
+
 
    switch (type) {
    case NONE_ENT:
@@ -138,33 +165,26 @@ EntityID CreateEntity(GameData* data, EntityType type) {
          data_ptr = malloc(sizeof(Player));
          memset(data_ptr, 0, sizeof(Player));
          player = data_ptr;
-         entity.transform.pos = (Vector2) { 80.f, 80.f };
-         entity.transform.size = GetPlayerSize(CLASS_NONE);
-         entity.data = player;
+         entity->transform.pos = (Vector2) { 80.f, 80.f };
+         entity->transform.size = GetPlayerSize(CLASS_NONE);
+         entity->data = player;
       break;
    case E_BULLET:
          printf("BULLET MADE");
          data_ptr = malloc(sizeof(Bullet));
          memset(data_ptr, 0, sizeof(Bullet));
-         SetTimer(&(data->timer_manager), entity.id, 0, 4.0f);
+         SetTimer(&(data->timer_manager), entity->id, 0, 4.0f);
+     break;
+   case FLAG_SPAWN:
      break;
    }
-   entity.data = data_ptr;
-   data->entities[data->next_entity_index] = entity;
-   data->entity_num++;
+   entity->data = data_ptr;
+}
 
-   bool set = false;
-   for (int i = entity.id; i < MAX_ENTITIES; i++) {
-      if (data->entities[i].type == NONE_ENT) {
-         data->next_entity_index = i;
-         set = true;
-         break;
-      }
-   }
-   if (!set)
-      data->next_entity_index = MAX_ENTITIES;
-   printf("ent num %d next ent %d\n", data->entity_num, data->next_entity_index);
-   return entity.id;
+EntityID CreateEntity(GameData* data, EntityType type) {
+   EntityID entity = CreateEmptyEntity(data);
+   SetEntityType(data, entity, type);
+   return entity;
 }
 
 void DrawEntity(Entity* ent) {
@@ -193,6 +213,8 @@ void DrawEntity(Entity* ent) {
    case E_BULLET:
          DrawRectangleV(ent->transform.pos, (Vector2){ 20.f, 20.f }, YELLOW);
      break;
+   default:
+      break;
    }
 }
 void ProcessEntity(GameData* data, Entity* ent) {
@@ -230,11 +252,14 @@ void ProcessEntity(GameData* data, Entity* ent) {
       }
       //ProcessGameTransform(&(player->transform));
 
-      Vector2 mov = NormalizeVector((Vector2){ player->x_dir, player->y_dir } );
+      ent->transform.vel = NormalizeVector((Vector2){ player->x_dir, player->y_dir } );
+      ent->transform.vel = (Vector2) { ent->transform.vel.x * 100.f, ent->transform.vel.y * 100.f };
+
+      ProcessGameTransform(&(ent->transform));
       //printf("PLAYER PROCESS %d %f %f %lu\n", ent->id, mov.x, mov.y, sizeof(Player));
       
 
-      ent->transform.pos = (Vector2){ 100.f*mov.x*GetFrameTime() + ent->transform.pos.x, 100.f*GetFrameTime()*mov.y + ent->transform.pos.y }; 
+     // ent->transform.pos = (Vector2){ 100.f*mov.x*GetFrameTime() + ent->transform.pos.x, 100.f*GetFrameTime()*mov.y + ent->transform.pos.y }; 
 
       //Vector2 offset = CheckCollisionsPhysical(data, ent->id, CL_WALL, (mov.x > mov.y));
 
@@ -347,16 +372,40 @@ void PlayerTriggerCheck(GameData* data, Entity* player_ent) {
 void SpawnEntitiesFromMapData(GameData* data, Map* map, float tile_size) {
    for (int x = 0; x < map->width; x++) {
       for (int y = 0; y < map->height; y++) {
-         int ind = y * map->width + x;
+         int ind = (y * map->width) + x;
+         
+         EGridType grid_type = map->map_data[ind];
+         if (grid_type == EM)
+            continue;
+         
+         EntityID ent_id = CreateEmptyEntity(data);
+         GameTransform* trans = GetEntityTransform(data, ent_id);
 
-         if (map->map_data[ind] == WA) {
-            EntityID wall_id = CreateEntity(data, WALL);
-            GameTransform* trans = GetEntityTransform(data, wall_id);
-            trans->pos.x = x*tile_size;
-            trans->pos.y = y*tile_size;
+         switch (grid_type) {
+         case EM:
+            break;
+         case WA:
+            SetEntityType(data, ent_id, WALL);
             trans->size.x = tile_size;
             trans->size.y = tile_size;
+         break;
+
+         case RF:
+            SetEntityType(data, ent_id, FLAG_SPAWN);
+            break;
+         case BF:
+            SetEntityType(data, ent_id, FLAG_SPAWN);
+            break;
+         case RS:
+            SetEntityType(data, ent_id, E_PLAYER_SPAWN);
+            break;
+         case BS:
+            SetEntityType(data, ent_id, E_PLAYER_SPAWN);
+           break;
          }
+
+         trans->pos.x = x*tile_size;
+         trans->pos.y = y*tile_size;
 
       }
    }
@@ -407,12 +456,13 @@ void QueueDestroyEntity(GameData* dat, EntityID ent) {
 
 void DestroyEntity(GameData* dat, EntityID ent) {
 
-   if (dat == NULL || dat->entities[ent].type == NONE_ENT)
+   if (dat == NULL || dat->entities[ent].id == -1)
       return;
 
 
    free(dat->entities[ent].data);
    dat->entities[ent].type = NONE_ENT;
+   dat->entities[ent].id = -1;
    dat->entities[ent].data = NULL;
 
    dat->entity_num--;
@@ -495,12 +545,17 @@ void ProcessGameTransform(GameTransform* transform) {
 
 GameData CreateGameData() {
    GameData ret = {
-      .entities = {0},
+      .entities = { },
       .timer_manager = { -1.f },
 
       .entity_num = 0,
       .next_entity_index = 0
    };
+
+   for (int i = 0; i < MAX_ENTITIES; i++) {
+      ret.entities[i].id = -1;
+      ret.entities[i].type = NONE_ENT;
+   }
    ret.queue_destroy = CreateDynamicArray(0, sizeof(EntityID));
    return ret; 
 }
@@ -512,7 +567,7 @@ void DestroyGameData(GameData* data) {
       return; 
 
    for (int i = 0; i < MAX_ENTITIES; i++) {
-      if (data->entities[i].type == NONE_ENT)
+      if (data->entities[i].id == -1)
          continue; 
       free(data->entities[i].data);
    }
@@ -579,7 +634,7 @@ float min(float a, float b) {
 float max(float a, float b) {
    return a < b ? b : a;
 }
-
+// https://gamedev.net/tutorials/programming/general-and-gameplay-programming/swept-aabb-collision-detection-and-response-r3084/
 Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2, bool is_x) {
 
    float ent1_minx = x1;

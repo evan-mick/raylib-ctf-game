@@ -57,6 +57,10 @@ typedef struct GameTransform {
 typedef enum EGridType {
     EM = 0, // Empty
     WA = 1, // Wall
+    RF = 2, // Red Flag
+    RS = 3, // Red spawn
+    BF = 4, // Blue Flag
+    BS = 5, // Blue spawn
 
 } EGridType;
 
@@ -68,13 +72,13 @@ typedef struct TeamMapData {
 
 static EGridType default_map_data[] = { 
        WA, WA, WA, WA, WA, WA, WA, WA, WA, WA,
+       WA, EM, EM, EM, EM, EM, RS, EM, RF, WA,
        WA, EM, EM, EM, EM, EM, EM, EM, EM, WA,
        WA, EM, EM, EM, EM, EM, EM, EM, EM, WA,
        WA, EM, EM, EM, EM, EM, EM, EM, EM, WA,
+       WA, EM, EM, EM, BS, EM, EM, EM, EM, WA,
        WA, EM, EM, EM, EM, EM, EM, EM, EM, WA,
-       WA, EM, EM, EM, EM, EM, EM, EM, EM, WA,
-       WA, EM, EM, EM, EM, EM, EM, EM, EM, WA,
-       WA, EM, EM, EM, EM, EM, EM, EM, EM, WA,
+       WA, EM, EM, EM, EM, EM, EM, BF, EM, WA,
        WA, EM, EM, EM, EM, EM, EM, EM, EM, WA,
        WA, WA, WA, WA, WA, WA, WA, WA, WA, WA,
     };
@@ -127,6 +131,7 @@ typedef enum EntityType {
     PLAYER = 6,
     E_BULLET = 7,
     FLAG_SPAWN = 8,
+    E_PLAYER_SPAWN = 9,
 } EntityType;
 
 
@@ -244,6 +249,10 @@ typedef struct GameData {
 GameData CreateGameData();
 void DestroyGameData(GameData* data);
 void UpdateEntity(Entity* ent);
+
+
+EntityID CreateEmptyEntity(GameData* data);
+void SetEntityType(GameData* data, EntityID id, EntityType type);
 EntityID CreateEntity(GameData* dat, EntityType type);
 void ProcessEntity(GameData* data, Entity* ent);
 void* GetEntityData(GameData* dat, EntityID ent);
