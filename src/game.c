@@ -656,6 +656,61 @@ float max(float a, float b) {
 //
 
 
+// moving and colliding transform
+CollisionResponse AABBSwept(GameTransform* mv, GameTransform* co) {
+
+   float in_x_right = ((mv->pos.x + mv->size.x) - co->pos.x) ;
+   float in_x_left = (mv->pos.x - (co->pos.x + co->size.x));
+   float in_y_down = ((mv->pos.y + mv->size.y) - co->size.y);
+   float in_y_up = (mv->size.y - (co->size.y + co->size.y));
+
+   float xEnt = mv->vel.x > 0 ? in_x_left : in_x_right;
+   float xEx = mv->vel.x > 0 ?  in_x_right : in_x_left;
+   float yEnt = mv->vel.y > 0 ? in_y_down : in_y_up;
+   float yEx = mv->vel.y > 0 ? in_y_up : in_y_down;
+
+   float xEntTime, xExTime, yEntTime, yExTime;
+
+   if (fabs(mv->vel.x) < 0.000001f) {
+      xEntTime = -INFINITY;
+      xExTime = INFINITY;
+   } else {
+      xEntTime = xEnt/mv->vel.x;
+      xExTime = xEx/mv->vel.x;
+   }
+
+   if (fabs(mv->vel.y) < 0.000001f) {
+      yEntTime = -INFINITY;
+      yExTime = INFINITY;
+   } else {
+      yEntTime = yEnt/mv->vel.y;
+      yExTime = yEx/mv->vel.y;
+   }
+
+
+   float entry_time = max(xEntTime, yEntTime);
+   float exit_time = min(xExTime, yExTime);
+
+   if (entry_time > exit_time || (xEnt < 0.0f && yEnt < 0.0f) || xEnt > 1.f || yEnt > 1.0f) {
+      return (CollisionResponse) {
+         .normal = {
+            .x = 0.f,
+            .y = 0.f
+         },
+         .collision_time = 1.0f
+      };
+   }
+
+
+
+   return (CollisionResponse) {
+         .normal = {
+            .x = 0.f,
+            .y = 0.f
+         },
+         .collision_time = entry_time,
+      };
+}
 
 
 Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2, bool is_x) {
@@ -670,10 +725,6 @@ Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, 
    float ent2_miny = y2;
    float ent2_maxy = y2 + height2;
      
-//   float in_x_right = ((x1 + width1) - x2) ;
-//   float in_x_left = (x1 - (x2 + width2));
-//   float in_y_down = ((y1 + height1) - y2);
-//   float in_y_up = (y1 - (y2 + height2));
    //
 
    float x_off = 0.f;  

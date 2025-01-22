@@ -295,6 +295,9 @@ void PlayerDropCarrying(GameData* data, Entity* player);
 bool TestCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2);
 bool TestCollisionRect(Rectangle first, Rectangle second);
 
+
+CollisionResponse AABBSwept(GameTransform* moving_transform, GameTransform* colliding_transform);
+
 Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2, bool is_x);
 Vector2 MDTCollisionRect(Rectangle first, Rectangle second, bool is_x);
 
