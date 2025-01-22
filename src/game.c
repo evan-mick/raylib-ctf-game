@@ -154,12 +154,16 @@ void SetEntityType(GameData* data, EntityID id, EntityType type) {
    case WALL:
       break;
    case UPGRADEBOX:
+         entity->transform.size = (Vector2) { 40.f, 40.f };
       break;
    case UPGRADEBOX_SPAWNER:
+         entity->transform.size = (Vector2) { 40.f, 40.f };
       break;
    case HEALTH_SPAWNER:
+         entity->transform.size = (Vector2) { 40.f, 40.f };
       break;
    case FLAG:
+         entity->transform.size = (Vector2) { 20.f, 40.f };
      break;
    case PLAYER:
          data_ptr = malloc(sizeof(Player));
@@ -176,6 +180,8 @@ void SetEntityType(GameData* data, EntityID id, EntityType type) {
          SetTimer(&(data->timer_manager), entity->id, 0, 4.0f);
      break;
    case FLAG_SPAWN:
+     break;
+   case E_PLAYER_SPAWN:
      break;
    }
    entity->data = data_ptr;
@@ -200,13 +206,21 @@ void DrawEntity(Entity* ent) {
          DrawRectangleV(ent->transform.pos, ent->transform.size, YELLOW);
       break;
    case UPGRADEBOX:
+         DrawRectangleV(ent->transform.pos, ent->transform.size, WHITE);
       break;
    case UPGRADEBOX_SPAWNER:
+         DrawRectangleV(ent->transform.pos, ent->transform.size, WHITE);
       break;
    case HEALTH_SPAWNER:
+         DrawRectangleV(ent->transform.pos, ent->transform.size, WHITE);
       break;
    case FLAG:
+         DrawRectangleV(ent->transform.pos, ent->transform.size, WHITE);
      break;
+   case FLAG_SPAWN:
+         printf("SPAWN DRAW %f %f %f %f\n", ent->transform.pos.x, ent->transform.pos.y, ent->transform.size.x, ent->transform.size.y);
+         DrawRectangleV(ent->transform.pos, ent->transform.size, WHITE);
+      break;
    case PLAYER:
          DrawPlayer(ent);
       break;
@@ -380,34 +394,38 @@ void SpawnEntitiesFromMapData(GameData* data, Map* map, float tile_size) {
          
          EntityID ent_id = CreateEmptyEntity(data);
          GameTransform* trans = GetEntityTransform(data, ent_id);
+         trans->size.x = tile_size;
+         trans->size.y = tile_size;
+          trans->pos.x = x*tile_size;
+         trans->pos.y = y*tile_size;
+
 
          switch (grid_type) {
          case EM:
             break;
          case WA:
             SetEntityType(data, ent_id, WALL);
-            trans->size.x = tile_size;
-            trans->size.y = tile_size;
          break;
 
          case RF:
             SetEntityType(data, ent_id, FLAG_SPAWN);
+            printf("RED FLAG\n");
             break;
          case BF:
             SetEntityType(data, ent_id, FLAG_SPAWN);
+            printf("BLUE FLAG\n");
             break;
          case RS:
             SetEntityType(data, ent_id, E_PLAYER_SPAWN);
+            printf("RED SPAWN\n");
             break;
          case BS:
             SetEntityType(data, ent_id, E_PLAYER_SPAWN);
+            printf("BLUE SPAWN\n");
            break;
          }
 
-         trans->pos.x = x*tile_size;
-         trans->pos.y = y*tile_size;
-
-      }
+        }
    }
 
 }
@@ -635,6 +653,11 @@ float max(float a, float b) {
    return a < b ? b : a;
 }
 // https://gamedev.net/tutorials/programming/general-and-gameplay-programming/swept-aabb-collision-detection-and-response-r3084/
+//
+
+
+
+
 Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2, bool is_x) {
 
    float ent1_minx = x1;

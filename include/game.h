@@ -53,6 +53,11 @@ typedef struct GameTransform {
     Vector2 size;
 } GameTransform;
 
+typedef struct CollisionResponse {
+    Vector2 normal;
+    float collision_time;
+} CollisionResponse;
+
 
 typedef enum EGridType {
     EM = 0, // Empty
@@ -289,6 +294,7 @@ void PlayerDropCarrying(GameData* data, Entity* player);
 
 bool TestCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2);
 bool TestCollisionRect(Rectangle first, Rectangle second);
+
 Vector2 MDTCollision(float x1, float y1, float width1, float height1, float x2, float y2, float width2, float height2, bool is_x);
 Vector2 MDTCollisionRect(Rectangle first, Rectangle second, bool is_x);
 
@@ -296,7 +302,6 @@ Vector2 CheckCollisionsPhysical(GameData* data, EntityID checking, CollisionMask
 void CheckCollisionsTrigger(float x1, float y1, float width, float height, EntityID checking, CollisionMask mask);
 
 void SpawnEntitiesFromMapData(GameData* data, Map* map, float tile_size);
-
 
 Vector2 GetEntityTypeSize(EntityType type);
 
