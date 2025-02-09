@@ -23,7 +23,6 @@
 
 int main() {
 
-   const int TILE_SIZE = 32;
    const int BORDER_SIZE = TILE_SIZE *2;
 
    const int width = TILE_SIZE * 10 + BORDER_SIZE*2;

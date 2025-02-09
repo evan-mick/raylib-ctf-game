@@ -281,9 +281,13 @@ void ProcessEntity(GameData* data, Entity* ent) {
 
          if (!TestCollisionTransMov(&(ent->transform), cur_trans))
              continue;
-         CollisionResponse res = AABBSwept(&(ent->transform), cur_trans);
 
-         ent->transform.vel = (Vector2) {ent->transform.vel.x * res.collision_time, ent->transform.vel.y * res.collision_time};
+
+         // Move and slide
+         CollisionResponse res = AABBSwept(&(ent->transform), cur_trans);
+         float slide_prod = (ent->transform.vel.y * res.normal.x + ent->transform.vel.x * res.normal.y) * res.collision_time;
+//         ent->transform.vel = (Vector2) {ent->transform.vel.x * res.collision_time, ent->transform.vel.y * res.collision_time};
+         ent->transform.vel = (Vector2) { slide_prod*res.normal.y, slide_prod * res.normal.x };
       }
 
       ProcessGameTransform(&(ent->transform));

@@ -36,6 +36,7 @@
 #define MAX_TEAM_NUM 2
 #define MAX_ENTITIES 100 // actually max entities + 1, for some reason...
 #define TIMERS_PER_ENTITY 4
+#define TILE_SIZE 32
 
 typedef int32_t EntityID;
 typedef uint8_t CollisionMask;
