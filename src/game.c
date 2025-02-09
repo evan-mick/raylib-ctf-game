@@ -218,7 +218,7 @@ void DrawEntity(Entity* ent) {
          DrawRectangleV(ent->transform.pos, ent->transform.size, WHITE);
      break;
    case FLAG_SPAWN:
-         printf("SPAWN DRAW %f %f %f %f\n", ent->transform.pos.x, ent->transform.pos.y, ent->transform.size.x, ent->transform.size.y);
+         //printf("SPAWN DRAW %f %f %f %f\n", ent->transform.pos.x, ent->transform.pos.y, ent->transform.size.x, ent->transform.size.y);
          DrawRectangleV(ent->transform.pos, ent->transform.size, WHITE);
       break;
    case PLAYER:
@@ -269,13 +269,30 @@ void ProcessEntity(GameData* data, Entity* ent) {
       ent->transform.vel = NormalizeVector((Vector2){ player->x_dir, player->y_dir } );
       ent->transform.vel = (Vector2) { ent->transform.vel.x * 100.f, ent->transform.vel.y * 100.f };
 
-      ProcessGameTransform(&(ent->transform));
-      //printf("PLAYER PROCESS %d %f %f %lu\n", ent->id, mov.x, mov.y, sizeof(Player));
-      
+      //AABBSwept(ent, );
 
+      //printf("PLAYER PROCESS %d %f %f %lu\n", ent->id, mov.x, mov.y, sizeof(Player));
+      int index = 0;
+      while (index < MAX_ENTITIES) {
+         index++;
+         //if ((data->collision_masks[index] & mask) == 0)
+         //   continue;
+         if (data->entities[index].type != WALL)
+            continue;
+         GameTransform* cur_trans = GetEntityTransform(data, index);
+
+         if (!TestCollisionTransMov(&(ent->transform), cur_trans))
+             continue;
+         CollisionResponse res = AABBSwept(&(ent->transform), cur_trans);
+
+         ent->transform.vel = (Vector2) {ent->transform.vel.x * res.collision_time, ent->transform.vel.y * res.collision_time};
+      }
+
+
+      ProcessGameTransform(&(ent->transform));
      // ent->transform.pos = (Vector2){ 100.f*mov.x*GetFrameTime() + ent->transform.pos.x, 100.f*GetFrameTime()*mov.y + ent->transform.pos.y }; 
 
-      //Vector2 offset = CheckCollisionsPhysical(data, ent->id, CL_WALL, (mov.x > mov.y));
+     //Vector2 offset = CheckCollisionsPhysical(data, ent->id, CL_WALL, (mov.x > mov.y));
 
      // if (offset.x > 0.f || offset.y > 0.f)
      //    printf("OFFSET %f %f \n", offset.x, offset.y);
@@ -638,6 +655,11 @@ bool TestCollision(float x1, float y1, float width1, float height1, float x2, fl
    return (in_x && in_y);
 }
 
+
+bool TestCollisionTransMov(GameTransform* first, GameTransform* second) {
+   return TestCollision(first->pos.x + first->vel.x * GetFrameTime(), first->pos.y + first->vel.y * GetFrameTime(), first->size.x, first->size.y, second->pos.x + second->vel.x * GetFrameTime(), second->pos.y + second->vel.y * GetFrameTime(), second->size.x, second->size.y);
+}
+
 bool TestCollisionRect(Rectangle first, Rectangle second) {
 //   bool in_x = (first.x + first.width > second.x) || (first.x < second.x + second.width);
 //   bool in_y = (first.y + first.height > second.y) || (first.y < second.y + second.height);
@@ -659,15 +681,25 @@ float max(float a, float b) {
 // moving and colliding transform
 CollisionResponse AABBSwept(GameTransform* mv, GameTransform* co) {
 
-   float in_x_right = ((mv->pos.x + mv->size.x) - co->pos.x) ;
-   float in_x_left = (mv->pos.x - (co->pos.x + co->size.x));
-   float in_y_down = ((mv->pos.y + mv->size.y) - co->size.y);
-   float in_y_up = (mv->size.y - (co->size.y + co->size.y));
+   Vector2 vel = (Vector2) { mv->vel.x * GetFrameTime() , mv->vel.y * GetFrameTime()  };
 
-   float xEnt = mv->vel.x > 0 ? in_x_left : in_x_right;
-   float xEx = mv->vel.x > 0 ?  in_x_right : in_x_left;
-   float yEnt = mv->vel.y > 0 ? in_y_down : in_y_up;
-   float yEx = mv->vel.y > 0 ? in_y_up : in_y_down;
+  // float in_x_right = ((mv->pos.x + mv->size.x) - co->pos.x) ;
+  // float in_x_left = (mv->pos.x - (co->pos.x + co->size.x));
+  // float in_y_down = ((mv->pos.y + mv->size.y) - co->size.y);
+  // float in_y_up = (mv->size.y - (co->size.y + co->size.y));
+   float in_x_right = ((co->pos.x + co->size.x) - mv->pos.x) ;
+   float in_x_left = (co->pos.x - (mv->pos.x + mv->size.x));
+   float in_y_down = ((co->pos.y + co->size.y) - mv->pos.y);
+   float in_y_up = (co->pos.y - (mv->pos.y + mv->size.y));
+
+
+            // do we need cos for specular?
+
+            // numerator ignored b/c diac function only when equal, and it always will be 
+   float xEnt = mv->vel.x > 0.f ? in_x_left : in_x_right;
+   float xEx = mv->vel.x > 0.f ?  in_x_right : in_x_left;
+   float yEnt = mv->vel.y > 0.f ? in_y_up : in_y_down;
+   float yEx = mv->vel.y > 0.f ? in_y_down : in_y_up;
 
    float xEntTime, xExTime, yEntTime, yExTime;
 
@@ -675,23 +707,22 @@ CollisionResponse AABBSwept(GameTransform* mv, GameTransform* co) {
       xEntTime = -INFINITY;
       xExTime = INFINITY;
    } else {
-      xEntTime = xEnt/mv->vel.x;
-      xExTime = xEx/mv->vel.x;
+      xEntTime = xEnt/vel.x;
+      xExTime = xEx/vel.x;
    }
 
    if (fabs(mv->vel.y) < 0.000001f) {
       yEntTime = -INFINITY;
       yExTime = INFINITY;
    } else {
-      yEntTime = yEnt/mv->vel.y;
-      yExTime = yEx/mv->vel.y;
+      yEntTime = yEnt/vel.y;
+      yExTime = yEx/vel.y;
    }
-
 
    float entry_time = max(xEntTime, yEntTime);
    float exit_time = min(xExTime, yExTime);
 
-   if (entry_time > exit_time || (xEnt < 0.0f && yEnt < 0.0f) || xEnt > 1.f || yEnt > 1.0f) {
+   if (entry_time > exit_time || (xEntTime < 0.0f && yEntTime < 0.0f) || xEntTime > 1.f || yEntTime > 1.f) {
       return (CollisionResponse) {
          .normal = {
             .x = 0.f,
@@ -702,11 +733,17 @@ CollisionResponse AABBSwept(GameTransform* mv, GameTransform* co) {
    }
 
 
+   float nx = 0.f, ny = 0.f;
+   if (xEntTime > yEntTime) {
+      nx = yEnt < 0.f ? 1.0 : -1.0f;
+   } else {
+      ny = yEnt < 0.f ? 1.0 : -1.0f;
+   }
 
    return (CollisionResponse) {
          .normal = {
-            .x = 0.f,
-            .y = 0.f
+            .x = nx,
+            .y = ny 
          },
          .collision_time = entry_time,
       };
