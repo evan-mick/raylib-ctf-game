@@ -269,9 +269,7 @@ void ProcessEntity(GameData* data, Entity* ent) {
       ent->transform.vel = NormalizeVector((Vector2){ player->x_dir, player->y_dir } );
       ent->transform.vel = (Vector2) { ent->transform.vel.x * 100.f, ent->transform.vel.y * 100.f };
 
-      //AABBSwept(ent, );
-
-      //printf("PLAYER PROCESS %d %f %f %lu\n", ent->id, mov.x, mov.y, sizeof(Player));
+      // COLLISION DETECTION
       int index = 0;
       while (index < MAX_ENTITIES) {
          index++;
@@ -288,17 +286,7 @@ void ProcessEntity(GameData* data, Entity* ent) {
          ent->transform.vel = (Vector2) {ent->transform.vel.x * res.collision_time, ent->transform.vel.y * res.collision_time};
       }
 
-
       ProcessGameTransform(&(ent->transform));
-     // ent->transform.pos = (Vector2){ 100.f*mov.x*GetFrameTime() + ent->transform.pos.x, 100.f*GetFrameTime()*mov.y + ent->transform.pos.y }; 
-
-     //Vector2 offset = CheckCollisionsPhysical(data, ent->id, CL_WALL, (mov.x > mov.y));
-
-     // if (offset.x > 0.f || offset.y > 0.f)
-     //    printf("OFFSET %f %f \n", offset.x, offset.y);
-     // ent->transform.pos.x += offset.x;
-     // ent->transform.pos.y += offset.y;
-
       PlayerTriggerCheck(data, ent);
 
       bool shoot = ((player->input & SHOOT) != 0);
